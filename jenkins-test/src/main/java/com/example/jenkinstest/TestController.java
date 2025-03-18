@@ -3,10 +3,10 @@ package com.example.jenkinstest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@RestController("/test")
 public class TestController {
-    @GetMapping("/test")
+    @GetMapping("/ex01")
     public String test() {
-        return "test";
+        return "ex01 - test";
     }
 }
