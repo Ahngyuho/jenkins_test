@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "gyuho0897/backend"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                echo 'Cloning repository'
+                git branch: 'main', url: 'https://github.com/Ahngyuho/jenkins_test'
+            }
+        }
+
+        stage('Check Environment') {
+            steps {
+                sh 'whoami'  // 현재 실행 계정 확인
+                sh 'pwd'     // 현재 작업 디렉토리 확인
+                sh 'ls -l'   // 현재 디렉토리의 파일 목록 확인
+            }
+        }
+
+        stage('Gradle Build') {
+            steps {
+                dir('jenkins-test') {  // Git Clone한 프로젝트 디렉토리로 이동
+                    echo "Add permission to gradlew"
+                    sh 'chmod +x gradlew'
+
+                    echo "Build the project"
+                    sh './gradlew bootJar'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                        dir('jenkins-test') {  // Dockerfile이 있는 디렉토리에서 실행
+                            docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        }
+                }
+            }
+        }
+
+        stage('Push to Registry') {
+                    steps {
+                        script {
+                                dir('jenkins-test') {  // Dockerfile이 있는 디렉토리에서 실행
+                                    withDockerRegistry([credentialsId: 'DOCKER_HUB']) {
+                                                            docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
+                                                        }
+                                }
+                        }
+                    }
+                }
+
+                stage('SSH') {
+                                    steps {
+                                        script {
+                                             sshPublisher(
+                                                                     publishers: [
+                                                                         sshPublisherDesc(
+                                                                             configName: 'k8s',
+                                                                             verbose: true,
+                                                                             transfers: [
+                                                                                 sshTransfer(
+                                                                                     sourceFiles: 'k8s/backend-deployment.yml',
+                                                                                     remoteDirectory: '/',
+                                                                                     execCommand: '''
+                                                                                         sed -i "s/latest/$BUILD_ID/g" k8s/backend-deployment.yml
+                                                                                     '''
+                                                                                 ),
+                                                                                 sshTransfer(
+                                                                                     execCommand: '''
+                                                                                         kubectl apply -f /home/test/k8s/backend-deployment.yml
+                                                                                     '''
+                                                                                 )
+                                                                             ]
+                                                                         )
+                                                                     ]
+                                                                 )
+                                        }
+                                    }
+                                }
+
+    }
+}

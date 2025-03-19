@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkinsfile-spring
+  labels:
+    app: jenkinsfile-spring
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # 기존 Pod가 제거되기 전에 새로운 Pod가 준비됨
+      maxSurge: 1        # 한 번에 추가할 최대 Pod
+  selector:
+    matchLabels:
+      type: backend
+  template:
+    metadata:
+      labels:
+        type: backend
+    spec:
+      containers:
+        - name: spring-app
+          image: gyuho0897/backend:latest
+          ports:
+            - containerPort: 8080
